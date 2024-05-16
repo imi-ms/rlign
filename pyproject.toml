@@ -1,0 +1,38 @@
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = [
+    'flit_core >=3.8.0,<4',
+    'neurokit2>=0.2.7',
+    'numpy>=1.24.2',
+    'scipy>=1.12.0',
+    'pandas>=2.2.0',
+    'scikit-learn>=1.4.0'
+]
+
+[project]
+name='rlign'
+version='1.0'
+description='Beat normalization for ecg data.'
+requires-python = ">=3.11"
+authors=[
+    {name="Lucas Bickmann"},
+    {name="Lucas Plagwitz"}
+]
+dependencies = [
+    'neurokit2>=0.2.7',
+    'numpy>=1.24.2',
+    'scipy>=1.12.0',
+    'pandas>=2.2.0',
+    'scikit-learn>=1.4.0'
+]
+classifiers=[
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: MIT License',  
+    'Operating System :: POSIX :: Linux',        
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.11',
+    'Private :: Do Not Upload',
+]
+
+[project.optional-dependencies]
+docs = ["sphinx"]
