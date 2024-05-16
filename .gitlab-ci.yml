@@ -1,0 +1,42 @@
+stages:
+    - build
+
+build:
+  stage: build
+  image: python:3.11
+  environment: production
+  tags:
+    - shell
+  before_script:
+    - pip install twine --upgrade
+  
+  script:
+    - echo "Building Wheel..."
+    - pip install build
+    - python3 -m build
+    - python3 -m twine upload --skip-existing dist/* -u __token__ -p $PyPI_token
+    - echo "Wheel builded and uploaded."
+
+  only:
+    - main
+
+
+
+pages:
+  stage: build
+  image: python:3.11-slim-bookworm
+  environment: production
+  before_script:
+    - apt-get update && apt-get install -y pandoc
+    - pip install sphinx nbsphinx nbsphinx-link ipython sphinx-rtd-theme
+  script:
+    - pip install -r requirements.txt
+    - sphinx-build -M html docs/source/ docs/build/
+    - mv docs/build/html public
+
+  artifacts:
+    paths:
+      - public
+
+  only:
+    - main
