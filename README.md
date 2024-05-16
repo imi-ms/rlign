@@ -47,8 +47,7 @@ ecg_aligned_80hz = normalizer.transform(ecg)
 * `template`: A template ECG created with `create_template()` method. This template is 
     used as a reference for aligning R-peaks in the ECG signals.
 
-* `select_lead`: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak 
-    and QRST point detection. Different leads can provide varying levels of 
+* `select_lead`: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak detection. Different leads can provide varying levels of 
     clarity for these features. Selection via channel numbers 0,1,... .
 
 * `num_workers`: Determines the number of CPU cores to be utilized for 
@@ -73,6 +72,8 @@ ecg_aligned_80hz = normalizer.transform(ecg)
     
 * `median_beat`: Calculates the median from a set of aligned beats 
     and returns a single, representative beat.
+
+* `silent`: Disable all warnings.
 
 ## Citation
 Please use the following citation:

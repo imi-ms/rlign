@@ -13,6 +13,7 @@ requires = [
 name='rlign'
 version='1.0'
 description='Beat normalization for ecg data.'
+readme = "README.md"
 requires-python = ">=3.11"
 authors=[
     {name="Lucas Bickmann"},

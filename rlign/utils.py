@@ -7,7 +7,7 @@ import logging
 import numpy as np
 import pandas as pd
 
-from typing import Optional, Tuple
+from typing import Tuple
 from scipy.signal import resample
 from sklearn.utils import check_array
 from neurokit2 import ecg_clean, ecg_peaks
@@ -66,53 +66,52 @@ def find_rpeaks(
             ecg_lead: np.ndarray,
             sampling_rate: int,
             neurokit_method: str = "neurokit",
-            correct_artifacts: bool = True
-    ) -> Tuple[np.ndarray, dict]:
-        '''
-            Internal function which calls neurokit for rpeak and qrs-complex computation.
+            correct_artifacts: bool = True) -> Tuple[np.ndarray, dict]:
+    """
+        Internal function which calls neurokit for rpeak and qrs-complex computation.
 
-            Parameters:
-                ecg_lead: An array representing a single-lead ECG signal. The input is
-                    expected to be a one-dimensional array of voltage values over time, representing
-                    the electrical activity of the heart as captured by a specific ECG lead.
+        Parameters:
+            ecg_lead: An array representing a single-lead ECG signal. The input is
+                expected to be a one-dimensional array of voltage values over time, representing
+                the electrical activity of the heart as captured by a specific ECG lead.
 
-                sampling_rate: Defines the sampling rate for all ECG recordings.
+            sampling_rate: Defines the sampling rate for all ECG recordings.
 
-                neurokit_method: Chooses the algorithm for R-peak detection from the
-                    NeuroKit package. Different algorithms may offer varying performance
-                    based on the ECG signal characteristics.
+            neurokit_method: Chooses the algorithm for R-peak detection from the
+                NeuroKit package. Different algorithms may offer varying performance
+                based on the ECG signal characteristics.
 
-                correct_artifacts: If set to True, artifact correction is applied
-                    exclusively for R-peak detections, enhancing the accuracy of peak
-                    identification in noisy signals.
+            correct_artifacts: If set to True, artifact correction is applied
+                exclusively for R-peak detections, enhancing the accuracy of peak
+                identification in noisy signals.
 
-            Returns:
-                (rpeaks, qrs_epochs): A pair of elements (rpeaks, qrs_epochs) representing
-                    the outcomes of the R-peak detection and QRS complex computation processes,
-                    respectively. If an error occurs during the processing, the function
-                    returns (None, None), indicating a failure in signal analysis.
-        '''
-        try:
-            # clean the ecg as recommended by neurokit
-            data_ = ecg_clean(
-                ecg_lead,
-                sampling_rate=sampling_rate
-            )
+        Returns:
+            (rpeaks, qrs_epochs): A pair of elements (rpeaks, qrs_epochs) representing
+                the outcomes of the R-peak detection and QRS complex computation processes,
+                respectively. If an error occurs during the processing, the function
+                returns (None, None), indicating a failure in signal analysis.
+    """
+    try:
+        # clean the ecg as recommended by neurokit
+        data_ = ecg_clean(
+            ecg_lead,
+            sampling_rate=sampling_rate
+        )
 
-            # caluclate rpeaks
-            _, r_peaks = ecg_peaks(
-                data_,
-                sampling_rate=sampling_rate,
-                method=neurokit_method,
-                correct_artifacts=correct_artifacts
-            )
-            rpeaks = r_peaks['ECG_R_Peaks'].astype(np.int32)
+        # caluclate rpeaks
+        _, r_peaks = ecg_peaks(
+            data_,
+            sampling_rate=sampling_rate,
+            method=neurokit_method,
+            correct_artifacts=correct_artifacts
+        )
+        rpeaks = r_peaks['ECG_R_Peaks'].astype(np.int32)
 
-        except Exception as e:
-            logging.warning(f'Failure in neurokit: {e}\n')
-            return None, None
+    except Exception as e:
+        logging.warning(f'Failure in neurokit: {e}\n')
+        return None, None
 
-        return rpeaks
+    return rpeaks
 
 
 def _resample_multichannel(xs, fs, fs_target):
@@ -160,8 +159,6 @@ def _resample_signal(x, fs, fs_target):
     Note:
         The method have been modified from wfdbs resample_multichan and resample_sig.
     """
-    #t = np.arange(x.shape[0]).astype("float64")
-
     if fs == fs_target:
         return x
 

@@ -145,9 +145,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         # switch to defined resample method
         match scale_method:
             case 'linear':
-                # limit number of peaks
-                #source_rpeaks = source_rpeaks[:-1]
-
                 medians = []
                 # iterate over all peaks
                 for idx, (source_st, source_fs) in enumerate(zip(source_rpeaks, source_rpeaks_intervals)):
@@ -166,7 +163,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                             target_fs
                     ).transpose(1, 0)
 
-                   
                     if self.median_beat:
                         if (template_starts[idx] - int(self.template.intervals[0] / 3) < 0 or
                                 template_starts[idx] + self.template.intervals[0] - int(self.template.intervals[0] / 3) > len(
@@ -304,9 +300,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                 return None, 1
 
         try:
-            #hr = ecg_process(ecg_lead, sampling_rate=self.sampling_rate)[0]["ECG_Rate"].mean()
-            
-            # just some basic approximation
+            # just some basic heart rate approximation
             min_factor = 60 / (ecg.shape[1] / self.sampling_rate)
             hr = int(len(rpeaks) * min_factor)
         except:
@@ -319,8 +313,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             
             return ecg, 1                
 
-
-        # limit number of rpeaks to the targets
+        # limit number of R-peaks to the targets
         rpeaks = rpeaks[: len(self.template.rpeaks+1)]
 
         # get the interval lengths of found rpeaks
