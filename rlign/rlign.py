@@ -76,7 +76,9 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         if template:
             self.template = template
         else:
-            self.template = Template()
+            self.template = Template(
+                sampling_rate=sampling_rate
+            )
         self.select_lead = select_lead
         self.num_workers = num_workers
         self.neurokit_method = neurokit_method
@@ -121,7 +123,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         source_rpeaks_intervals: np.ndarray,
         fallback: Optional[bool] = False,
         hr: int = None,
-    ) -> (np.ndarray, int):
+    ) -> tuple[np.ndarray, int]:
         """
         Normalizes each interval independently based on the scale_method between rpeaks.
 
