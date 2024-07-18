@@ -11,8 +11,8 @@ requires = [
 
 [project]
 name='rlign'
-version='1.0'
-description='Beat normalization for ecg data.'
+version='1.0.post1'
+description='Beat normalization for ECG data.'
 readme = "README.md"
 requires-python = ">=3.11"
 authors=[
