@@ -3,13 +3,10 @@ stages:
 
 build:
   stage: build
-  image: python:3.11
+  image: python:3.11-slim-bookworm
   environment: production
-  tags:
-    - shell
   before_script:
     - pip install twine --upgrade
-  
   script:
     - echo "Building Wheel..."
     - pip install build
