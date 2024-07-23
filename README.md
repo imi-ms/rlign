@@ -5,7 +5,7 @@
 # Rlign: R peak alignment and ECG transformation framework
 
 This scikit-learn compatible framework `rlign` is designed to synchronize the temporal variations across ECG recordings. This alignment enables the direct application of simpler machine learning models, like support vector machines and logistic regression, on R-peak aligned ECG signals, bypassing the need for complex and potentially biased feature extraction and allowing for interpretable, efficient analysis with enhanced small sample size convergence. Moreover, the alignment facilitates clustering of ECG time series, overcoming the challenges posed by unaligned data, where clusters are obscured by temporal misalignments of cardiac cycles. `Rlign` can also be used for improved interpretability of CNNs by aggregating importance maps from Integrated Gradients across all instances of a data set, instead of only reviewing individual ECGs.
-
+For more in-depth insights, please refer to our paper available on [arXiv](https://arxiv.org/abs/2407.15555).
 
 ## Installation
 ### From PyPI
@@ -77,6 +77,18 @@ ecg_aligned_80hz = normalizer.transform(ecg)
 
 ## Citation
 Please use the following citation:
+
+```
+@misc{plagwitz2024rlignalgorithmenhancedelectrocardiogram,
+      title={The Rlign Algorithm for Enhanced Electrocardiogram Analysis through R-Peak Alignment for Explainable Classification and Clustering}, 
+      author={Lucas Plagwitz and Lucas Bickmann and Michael Fujarski and Alexander Brenner and Warnes Gobalakrishnan and Lars Eckardt and Antonius Büscher and Julian Varghese},
+      year={2024},
+      eprint={2407.15555},
+      archivePrefix={arXiv},
+      primaryClass={eess.SP},
+      url={https://arxiv.org/abs/2407.15555}, 
+}
+```
 
 ## License
 [MIT License](LICENSE.txt)
