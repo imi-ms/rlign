@@ -33,3 +33,13 @@ class UtilsTest(unittest.TestCase):
         ret = find_rpeaks(0*self.ecg_500hz_10s, sampling_rate=500)
         self.assertIsNone(ret[0])
         self.assertIsNone(ret[1])
+
+    def test_interval_length(self):
+        offset = .5
+        sampling_rate = 500
+        template60 = Template(seconds_len=10, sampling_rate=sampling_rate, template_bpm=60, offset=offset)
+        self.assertEquals(np.min(template60.intervals), sampling_rate)
+        self.assertEquals(np.max(template60.intervals), sampling_rate)
+        self.assertEquals(np.min(template60.rpeaks), int(offset*sampling_rate))
+        self.assertEquals(np.min(np.diff(template60.rpeaks)), sampling_rate)
+        self.assertEquals(np.max(np.diff(template60.rpeaks)), sampling_rate)

@@ -20,10 +20,16 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
     ECG, lead selection, and artifact correction.
 
     Parameters:
-        sampling_rate: Defines the sampling rate for all ECG recordings. 
+        sampling_rate: Defines the sampling rate for all ECG recordings and the template.
 
-        template: Path or identifier for the template ECG. This template is 
-            used as a reference for identifying R-peaks in the ECG signals.
+        seconds_len: Determines the duration of all ECG recordings and the template in seconds.
+
+        template_bpm: The desired normalized BPM value for the template. This parameter sets the
+            heart rate around which the QRST pattern is structured, thereby standardizing the R-peak
+            positions according to a specific BPM.
+
+        offset: The offset specifies the starting point for the first normalized QRS complex in the
+            template. In percentage of sampling_rate. Default is set to 0.01.
 
         select_lead: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak 
             and QRST point detection. Different leads can provide varying levels of 
@@ -31,7 +37,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
         num_workers: Determines the number of CPU cores to be utilized for 
             parallel processing. Increasing this number can speed up computations
-            but requires more system resources.
+            but requires more system resources. Default is set to 4.
 
         neurokit_method: Chooses the algorithm for R-peak detection from the 
             NeuroKit package. Different algorithms may offer varying performance 
@@ -44,27 +50,30 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         scale_method: Selects the scaling method from options 'identity', 'linear' 
             or 'hrc'. This choice dictates the interval used for resampling
             the ECG signal, which can impact the quality of the processed signal.
+            Default is 'hrc'.
 
         remove_fails: Determines the behavior when scaling is not possible. If
             set to True, the problematic ECG is excluded from the dataset. If False, 
-            the original, unscaled ECG signal is returned instead.
+            the original, unscaled ECG signal is returned instead. Default is False.
             
         median_beat: Calculates the median from a set of aligned beats and returns
-            a single, representative beat.
+            a single, representative beat. Default is False.
 
-        silent: Disable all warnings.
+        silent: Disable all warnings. Default True.
     """
 
-    __allowed = ("sampling_rate", "template", "resample_method",
-                 "select_lead", "num_workers", "neurokit_method",
-                 "correct_artifacts", "scale_method")
+    __allowed = ("sampling_rate", "resample_method", "select_lead",
+                 "num_workers", "neurokit_method", "correct_artifacts",
+                 "scale_method", "seconds_len", "template_bpm", "offset", "silent")
 
     def __init__(
             self, 
             sampling_rate: int = 500,
-            template: Template = None,
+            seconds_len: int = 10,
+            template_bpm: int = 60,
+            offset: float = .01,
             select_lead: int = 1,
-            num_workers: int = 8,  # only applies for multiprocessing
+            num_workers: int = 4,
             neurokit_method: str = 'neurokit',
             correct_artifacts: bool = True,
             scale_method: str = 'hrc',
@@ -72,13 +81,18 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             median_beat: bool = False,
             silent: bool = True
     ):
-        self.sampling_rate = sampling_rate
-        if template:
-            self.template = template
-        else:
-            self.template = Template(
-                sampling_rate=sampling_rate
-            )
+
+        self._sampling_rate = sampling_rate
+        self._offset = offset
+        self._template_bpm = template_bpm
+        self._seconds_len = seconds_len
+
+        self.template = Template(
+            sampling_rate=self.sampling_rate,
+            offset=self.offset,
+            template_bpm=self.template_bpm,
+            seconds_len=self.seconds_len
+        )
         self.select_lead = select_lead
         self.num_workers = num_workers
         self.neurokit_method = neurokit_method
@@ -86,6 +100,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         self.remove_fails = remove_fails
         self.fails = []
         self.median_beat = median_beat
+        self.silent = silent
 
         available_scale_methods = ['identity', 'linear', 'hrc']
         if scale_method in available_scale_methods:
@@ -97,13 +112,10 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             raise ValueError(f'No such scaling method, '
                              f'please use one of the following: {available_scale_methods}')
 
-        if silent:
+        if self.silent:
             warnings.filterwarnings("ignore")
 
-    def update_configuration(
-            self,
-            **kwargs
-    ):
+    def update_configuration(self, **kwargs):
         """
         Enables modification of existing configuration settings as required.
 
@@ -115,6 +127,50 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         for k in kwargs.keys():
             assert (k in self.__class__.__allowed), f"Disallowed keyword passed: {k}"
             setattr(self, k, kwargs[k])
+
+    @property
+    def offset(self):
+        return self._offset
+
+    @property
+    def template_bpm(self):
+        return self._template_bpm
+
+    @property
+    def seconds_len(self):
+        return self._seconds_len
+
+    @property
+    def sampling_rate(self):
+        return self._sampling_rate
+
+    @offset.setter
+    def offset(self, val):
+        self._offset = val
+        self._update_template()
+
+    @sampling_rate.setter
+    def sampling_rate(self, val):
+        self._sampling_rate = val
+        self._update_template()
+
+    @seconds_len.setter
+    def seconds_len(self, val):
+        self._seconds_len = val
+        self._update_template()
+
+    @template_bpm.setter
+    def template_bpm(self, val):
+        self._template_bpm = val
+        self._update_template()
+
+    def _update_template(self):
+        self.template = Template(
+            sampling_rate=self.sampling_rate,
+            offset=self.offset,
+            template_bpm=self.template_bpm,
+            seconds_len=self.seconds_len
+        )
 
     def _normalize_interval(
         self,
@@ -182,7 +238,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                         return source_ecg[:, :self.template.intervals[0]], 1
 
             case "hrc":
-
                 template_rr_dist = template_starts[2] - template_starts[1]
                 dist_upper_template = int((self.template.bpm / 280+0.14) * template_rr_dist)
                 dist_lower_template = int((-self.template.bpm / 330 + 0.96) * template_rr_dist)
@@ -272,10 +327,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         """
         return self
 
-    def _template_transform(
-            self,
-            ecg: np.ndarray,
-    ):
+    def _template_transform(self, ecg: np.ndarray):
         """
         Normalizes the ECG by recentering R-peaks at equally spaced intervals, as defined in the template.
         The QRST-complexes are added, and the baselines are interpolated to match the new connections between complexes.
@@ -329,11 +381,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                             hr=hr
                         )
 
-    def transform(
-            self,
-            X: np.ndarray,
-            y=None
-    ) -> np.ndarray:
+    def transform(self, X: np.ndarray, y=None) -> np.ndarray:
         """
         Normalizes and returns the ECGs with multiprocessing.
         

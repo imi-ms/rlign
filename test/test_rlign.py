@@ -22,11 +22,8 @@ class UtilsTest(unittest.TestCase):
         print(self.X.shape)
 
 
-        normalizer_single_cpu = rlign.Rlign(num_workers=1, select_lead=0)
-        normalizer_multiple_cpu = rlign.Rlign(num_workers=8, select_lead=0)
-        template_ = rlign.Template(template_bpm=40)
-        normalizer_single_cpu.update_configuration(template=template_)
-        normalizer_multiple_cpu.update_configuration(template=template_)
+        normalizer_single_cpu = rlign.Rlign(num_workers=1, select_lead=0, template_bpm=40)
+        normalizer_multiple_cpu = rlign.Rlign(num_workers=8, select_lead=0, template_bpm=40)
 
         start_time = time.time()
         normalizer_single_cpu.transform(self.X)
@@ -41,9 +38,7 @@ class UtilsTest(unittest.TestCase):
         self.assertLess(diff_multiple, diff_single)
 
     def test_scale_method(self):
-        normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc")
-        template_ = rlign.Template(template_bpm=40)
-        normalizer_hrc.update_configuration(template=template_)
+        normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc", template_bpm=40)
         X_trans = normalizer_hrc.transform(self.X[:10])
         self.assertEquals(X_trans.shape, (10, 1, 5000))
 
@@ -51,11 +46,10 @@ class UtilsTest(unittest.TestCase):
             rlign.Rlign(num_workers=1, select_lead=0, scale_method="equal")
 
     def test_zero(self):
-        normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc", remove_fails=False)
-        template_ = rlign.Template(template_bpm=40)
-        normalizer_hrc.update_configuration(template=template_)
-        X_trans = normalizer_hrc.transform(np.zeros((1,12,5000)))
-        self.assertTrue(np.array_equal(X_trans, np.zeros((1,12,5000))))
+        normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc",
+                                     remove_fails=False, template_bpm=40)
+        X_trans = normalizer_hrc.transform(np.zeros((1, 12, 5000)))
+        self.assertTrue(np.array_equal(X_trans, np.zeros((1, 12, 5000))))
 
         a = np.concatenate([np.zeros((1, 1, 5000)), self.X[:10]], axis=0)
         X_trans = normalizer_hrc.transform(a)
