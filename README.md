@@ -33,22 +33,28 @@ normalizer = rlign.Rlign(scale_method='hrc')
 # Input shape has to be (samples, channels, len)
 ecg_aligned = normalizer.transform(ecg)
 
-# You can update some configurations later on
-template_ = rlign.Template(template_bpm=80)
-normalizer.update_configuration(template=template_)
+# You can set different configuration like median_beat-averaging or the template_bpm
+normalizer = rlign.Rlign(scale_method='hrc', median_beat=True, template_bpm=80)
 
 ecg_aligned_80hz = normalizer.transform(ecg)
 ```
 
 ### Configurations
 
-* `sampling_rate`: Defines the sampling rate for all ECG recordings. 
+* `sampling_rate`: Defines the sampling rate for all ECG recordings and the template. Default is set to 500.
 
-* `template`: A template ECG created with `create_template()` method. This template is 
-    used as a reference for aligning R-peaks in the ECG signals.
+* `seconds_len`: Determines the duration of all ECG recordings and the template in seconds.
 
-* `select_lead`: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak detection. Different leads can provide varying levels of 
-    clarity for these features. Selection via channel numbers 0,1,... .
+* `template_bpm`: The desired normalized BPM value for the template. 
+    This parameter sets the heart rate around which the QRST pattern 
+    is structured, thereby standardizing the R-peak positions according to a specific BPM.
+
+* `offset`: The offset specifies the starting point for the first normalized QRS complex in the 
+    template. In percentage of sampling_rate. Default is set to 0.5.
+
+* `select_lead`: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak detection. 
+    Different leads can provide varying levels of clarity for these features. 
+    Selection via channel numbers 0,1,... .
 
 * `num_workers`: Determines the number of CPU cores to be utilized for 
     parallel processing. Increasing this number can speed up computations
@@ -65,15 +71,16 @@ ecg_aligned_80hz = normalizer.transform(ecg)
 * `scale_method`: Selects the scaling method from options like 'resampling' 
     or 'hrc'. This choice dictates the interval used for resampling
     the ECG signal, which can impact the quality of the processed signal.
+    Default is 'hrc'.
 
 * `remove_fails`: Determines the behavior when scaling is not possible. If
     set to True, the problematic ECG is excluded from the dataset. If False, 
-    the original, unscaled ECG signal is returned instead.
+    the original, unscaled ECG signal is returned instead. Default is False.
     
 * `median_beat`: Calculates the median from a set of aligned beats 
     and returns a single, representative beat.
 
-* `silent`: Disable all warnings.
+* `silent`: Disable all warnings. Default True.
 
 ## Citation
 Please use the following citation:

@@ -18,7 +18,7 @@ class Template(object):
     def __init__(self,
                  seconds_len: float = 10,
                  sampling_rate: int = 500,
-                 template_bpm: int = 40,
+                 template_bpm: int = 60,
                  offset: float = 0.5):
         """
             Creates a binary template pattern for an ECG, specifically designed for positioning the QRST interval.
@@ -38,21 +38,22 @@ class Template(object):
                     positions according to a specific BPM.
 
                 offset: The offset specifies the starting point for the first normalized QRS complex in the
-                    template.
+                    template. In percentage of sampling_rate.
 
 
             Note:
                 This class is integral to the ECG analysis process, providing a foundational template for
                 subsequent signal processing and interpretation.
         """
-
+        if not (0 <= offset < 1):
+            raise ValueError("Parameter offset must be between 0 and 1.")
         offset = int(offset * sampling_rate)
         total_len = seconds_len * sampling_rate
         template_bpm_len = (template_bpm / 60) * seconds_len
         self.bpm = template_bpm
 
         # compute spacing between rpeaks
-        template_intervals = [int((total_len - offset) / template_bpm_len)] * int(template_bpm_len)
+        template_intervals = [int(total_len / template_bpm_len)] * int(template_bpm_len)
 
         # get equally spaced r-peak positions
         template_rpeaks = np.cumsum([offset, *template_intervals])
@@ -111,6 +112,8 @@ def find_rpeaks(
         logging.warning(f'Failure in neurokit: {e}\n')
         return None, None
 
+    if not len(rpeaks):
+        return None, None
     return rpeaks
 
 
