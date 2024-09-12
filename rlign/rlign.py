@@ -347,7 +347,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
             if self.detrend:
                 beats = np.apply_along_axis(_detrend, axis=-1, arr=beats)
-
+            
             match self.agg_beat:
                 case "median":
                     normalized_ecg = np.nanmedian(np.concatenate(beats, axis=0), axis=0)
@@ -454,8 +454,8 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         else:
             results = [self._template_transform(X[i]) for i in range(len(X))]
 
-        self.fails = [1 for res in results if res is None]
-        d = [res for res in results if res is not None]
+        self.fails = []
+        d = [res if res is not None else self.fails.append(1) for res in results ]
         if self.agg_beat != "list":
             d = np.asarray(d)
         return d
