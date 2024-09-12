@@ -23,7 +23,11 @@ class UtilsTest(unittest.TestCase):
 
 
         normalizer_single_cpu = rlign.Rlign(num_workers=1, select_lead=0, template_bpm=40)
+<<<<<<< HEAD
         normalizer_multiple_cpu = rlign.Rlign(num_workers=4, select_lead=0, template_bpm=40)
+=======
+        normalizer_multiple_cpu = rlign.Rlign(num_workers=8, select_lead=0, template_bpm=40)
+>>>>>>> origin/main
 
         start_time = time.time()
         normalizer_single_cpu.transform(self.X)
