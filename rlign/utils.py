@@ -9,6 +9,7 @@ import pandas as pd
 
 from typing import Tuple
 from scipy.signal import resample
+from scipy.stats import theilslopes
 from sklearn.utils import check_array
 from neurokit2 import ecg_clean, ecg_peaks
 
@@ -90,7 +91,7 @@ def find_rpeaks(
             (rpeaks, qrs_epochs): A pair of elements (rpeaks, qrs_epochs) representing
                 the outcomes of the R-peak detection and QRS complex computation processes,
                 respectively. If an error occurs during the processing, the function
-                returns (None, None), indicating a failure in signal analysis.
+                returns None, indicating a failure in signal analysis.
     """
     try:
         # clean the ecg as recommended by neurokit
@@ -110,10 +111,10 @@ def find_rpeaks(
 
     except Exception as e:
         logging.warning(f'Failure in neurokit: {e}\n')
-        return None, None
+        return None
 
     if not len(rpeaks):
-        return None, None
+        return None
     return rpeaks
 
 
@@ -182,3 +183,10 @@ def _check_3d_array(X):
     if X.ndim != 3:
         raise ValueError(f"X must be 3-dimensional (got {X.ndim}).")
     return X
+
+def _detrend(source_ecg):
+    x = np.arange(len(source_ecg))
+    slope, intercept, _, _ = theilslopes(source_ecg, x, method="joint")
+    trend = intercept + slope * x
+    source_ecg -= trend
+    return source_ecg

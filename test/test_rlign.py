@@ -23,7 +23,7 @@ class UtilsTest(unittest.TestCase):
 
 
         normalizer_single_cpu = rlign.Rlign(num_workers=1, select_lead=0, template_bpm=40)
-        normalizer_multiple_cpu = rlign.Rlign(num_workers=8, select_lead=0, template_bpm=40)
+        normalizer_multiple_cpu = rlign.Rlign(num_workers=4, select_lead=0, template_bpm=40)
 
         start_time = time.time()
         normalizer_single_cpu.transform(self.X)
@@ -40,7 +40,7 @@ class UtilsTest(unittest.TestCase):
     def test_scale_method(self):
         normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc", template_bpm=40)
         X_trans = normalizer_hrc.transform(self.X[:10])
-        self.assertEquals(X_trans.shape, (10, 1, 5000))
+        self.assertEqual(X_trans.shape, (10, 1, 5000))
 
         with self.assertRaises(ValueError):
             rlign.Rlign(num_workers=1, select_lead=0, scale_method="equal")
@@ -53,13 +53,12 @@ class UtilsTest(unittest.TestCase):
 
         a = np.concatenate([np.zeros((1, 1, 5000)), self.X[:10]], axis=0)
         X_trans = normalizer_hrc.transform(a)
-        self.assertEquals(len(X_trans), 11)
-        self.assertEquals(normalizer_hrc.fails[0], 1)
-        self.assertEquals(np.sum(normalizer_hrc.fails[1:]), 0)
+        self.assertEqual(len(X_trans), 11)
+        self.assertEqual(normalizer_hrc.fails, [])
+        self.assertEqual(np.sum(normalizer_hrc.fails[1:]), 0)
 
         normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc", remove_fails=True)
         a = np.concatenate([np.zeros((1, 1, 5000)), self.X[:10]], axis=0)
         X_trans = normalizer_hrc.transform(a)
-        self.assertEquals(len(X_trans), 10)
-        self.assertEquals(normalizer_hrc.fails[0], 1)
-        self.assertEquals(np.sum(normalizer_hrc.fails[1:]), 0)
+        self.assertEqual(len(X_trans), 10)
+        self.assertEqual(normalizer_hrc.fails, [1])

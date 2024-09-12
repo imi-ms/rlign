@@ -11,10 +11,10 @@ requires = [
 
 [project]
 name='rlign'
-version='1.0.post1'
+version='1.1'
 description='Beat normalization for ECG data.'
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors=[
     {name="Lucas Bickmann"},
     {name="Lucas Plagwitz"}
