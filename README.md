@@ -34,11 +34,7 @@ normalizer = rlign.Rlign(scale_method='hrc')
 ecg_aligned = normalizer.transform(ecg)
 
 # You can set different configuration like median_beat-averaging or the template_bpm
-<<<<<<< HEAD
 normalizer = rlign.Rlign(scale_method='hrc', agg_beat='median', template_bpm=80)
-=======
-normalizer = rlign.Rlign(scale_method='hrc', median_beat=True, template_bpm=80)
->>>>>>> origin/main
 
 ecg_aligned_80bpm = normalizer.transform(ecg)
 ```
@@ -47,22 +43,14 @@ ecg_aligned_80bpm = normalizer.transform(ecg)
 
 * `sampling_rate`: Defines the sampling rate for all ECG recordings and the template. Default is set to 500.
 
-<<<<<<< HEAD
 * `seconds_len`: Determines the duration of all ECG recordings and the template in seconds. Default is 10 (sec).
-=======
-* `seconds_len`: Determines the duration of all ECG recordings and the template in seconds.
->>>>>>> origin/main
 
 * `template_bpm`: The desired normalized BPM value for the template. 
     This parameter sets the heart rate around which the QRST pattern 
     is structured, thereby standardizing the R-peak positions according to a specific BPM.
 
 * `offset`: The offset specifies the starting point for the first normalized QRS complex in the 
-<<<<<<< HEAD
     template. In percentage of sampling_rate. Default is set to 0.01.
-=======
-    template. In percentage of sampling_rate. Default is set to 0.5.
->>>>>>> origin/main
 
 * `select_lead`: Specifies the lead (e.g., 'Lead II', 'Lead V1') for R-peak detection. 
     Different leads can provide varying levels of clarity for these features. 
