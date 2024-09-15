@@ -54,11 +54,11 @@ class UtilsTest(unittest.TestCase):
         a = np.concatenate([np.zeros((1, 1, 5000)), self.X[:10]], axis=0)
         X_trans = normalizer_hrc.transform(a)
         self.assertEqual(len(X_trans), 11)
-        self.assertEqual(normalizer_hrc.fails, [])
+        self.assertEqual(normalizer_hrc.fails[0], 1)
         self.assertEqual(np.sum(normalizer_hrc.fails[1:]), 0)
 
         normalizer_hrc = rlign.Rlign(num_workers=1, select_lead=0, scale_method="hrc", remove_fails=True)
         a = np.concatenate([np.zeros((1, 1, 5000)), self.X[:10]], axis=0)
         X_trans = normalizer_hrc.transform(a)
         self.assertEqual(len(X_trans), 10)
-        self.assertEqual(normalizer_hrc.fails, [1])
+        self.assertEqual(normalizer_hrc.fails, [1]+[0]*10)
