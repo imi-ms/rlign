@@ -16,12 +16,8 @@ class UtilsTest(unittest.TestCase):
         self.ecg_1000hz_10s = ecg_simulate(sampling_rate=1000)
 
         self.X = np.concatenate([ecg_simulate(sampling_rate=500).reshape(1,1,5000)]*3000, axis=0)
-        print(self.X.shape)
 
     def test_multi_processing(self):
-        print(self.X.shape)
-
-
         normalizer_single_cpu = rlign.Rlign(num_workers=1, select_lead=0, template_bpm=40)
         normalizer_multiple_cpu = rlign.Rlign(num_workers=4, select_lead=0, template_bpm=40)
 
