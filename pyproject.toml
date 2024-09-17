@@ -11,16 +11,16 @@ requires = [
 
 [project]
 name='rlign'
-version='1.0.post2'
+version='1.1'
 description='Beat normalization for ECG data.'
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 authors=[
     {name="Lucas Bickmann"},
     {name="Lucas Plagwitz"}
 ]
 dependencies = [
-    'neurokit2>=0.2.7',
+    'neurokit2>=0.2.10',
     'numpy>=1.24.2',
     'scipy>=1.12.0',
     'pandas>=2.2.0',
