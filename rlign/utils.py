@@ -140,7 +140,6 @@ def _resample_multichannel(xs, fs, fs_target):
     for chan in range(xs.shape[1]):
         resampled_x = _resample_signal(xs[:, chan], fs, fs_target)
         lx.append(resampled_x)
-
     return np.column_stack(lx)
 
 
@@ -171,7 +170,7 @@ def _resample_signal(x, fs, fs_target):
     if np.isnan(x).any():
         x = pd.Series(x.reshape((-1,))).interpolate().values
     resampled_x = resample(x, num=new_length, window="hamming")
-   
+
     return resampled_x
 
 
@@ -183,6 +182,7 @@ def _check_3d_array(X):
     if X.ndim != 3:
         raise ValueError(f"X must be 3-dimensional (got {X.ndim}).")
     return X
+
 
 def _detrend(source_ecg):
     x = np.arange(len(source_ecg))
