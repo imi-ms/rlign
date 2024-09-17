@@ -3,7 +3,8 @@ name: Mirror and run GitLab CI
 on: 
   push:
     branches: 
-      -  main
+      - main
+      - 'dev-*'
   workflow_dispatch: {} # manual dispatch
 
 jobs:
