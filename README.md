@@ -103,5 +103,19 @@ Please use the following citation:
 }
 ```
 
+Additionally, please cite this publication:
+```
+@article{Bickmann2025challenging,
+  title    = "Challenging Black-Box Models: Interpretable Explanations for
+              {ECG} Classification",
+  author   = "Lucas Bickmann and Lucas Plagwitz and Antonius Büscher and Julian Varghese",
+  journal  = "Stud. Health Technol. Inform.",
+  volume   =  327,
+  pages    = "587--588",
+  month    =  may,
+  year     =  2025,
+}
+```
+
 ## License
 [MIT License](LICENSE.txt)
