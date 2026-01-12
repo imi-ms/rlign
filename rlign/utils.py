@@ -190,3 +190,75 @@ def _detrend(source_ecg):
     trend = intercept + slope * x
     source_ecg -= trend
     return source_ecg
+
+
+def malik(bpm, type="avg"):
+    """
+    Estimate the QT interval duration based on heart rate using
+    the linear QT–RR relationship described by Malik et al.
+
+    The QT interval is modeled as a linear function of the RR interval
+    with sex-specific parameters. For `type="avg"`, the mean of the
+    male and female models is returned.
+
+    Reference:
+        Malik M, Färbom P, Batchvarov V, Hnatkova K, Camm AJ.
+        Relation between QT and RR intervals is highly individual among
+        healthy subjects: implications for heart rate correction of the QT interval.
+        Heart. 2002;87:220–228.
+    """
+    RR = 60 / bpm
+    if type == "avg":
+        return (malik(bpm, type="male") + malik(bpm, type="female")) / 2
+    # only linear
+    if type == "male":
+        beta, alpha = 0.24, 0.15
+    elif type == "female":
+        beta, alpha = 0.22, 0.19
+    else:
+        raise ValueError(f"Unknown QT interval type: {type}")
+    bpm = beta + alpha * RR
+    return bpm * 1000
+
+def qrs_off_to_t_off_karjalainen_to_percent(bpm):
+    """
+    Estimate the temporal distance from QRS offset to T-wave offset
+    as a fraction of the RR interval.
+
+    The QT interval (in ms) is estimated using the Malik QT–RR model
+    with average population parameters. A fixed duration of 35 ms
+    corresponding to the QR portion of the QRS complex is subtracted
+    to approximate the interval from R-peak to T-wave offset.
+
+    Assumptions:
+    - Average QRS duration ~ 90 ms (QR ~ 35 ms, RS ~ 55 ms)
+    - Sinus rhythm and physiological heart rates.
+    - Population-average correction; individual variability is expected.
+    """
+    RR = 60 / bpm * 1000
+    qt = malik(bpm, type="avg")
+    qt -= 35
+    return qt / RR
+
+
+def p_on_to_qrs_on_carrutheres(bpm):
+    """
+    Estimate the temporal distance from P-wave onset to QRS onset
+    as a fraction of the RR interval, based on a heart-rate–dependent
+    PR interval model.
+
+    The PR interval (in ms) is estimated according to:
+        PR = -0.351 * HR + 176.7
+    as reported in:
+        Carruthers SG, McCall B, Cordell BA, Wu R.
+        Relationships between heart rate and PR interval during
+        physiological and pharmacological interventions.
+        Br J Clin Pharmacol. 1987;23(3):259–265.
+
+    A fixed offset of 35 ms is added to approximate the interval
+    from P-wave onset to QRS onset.
+
+    """
+    RR = (60 / bpm * 1000)
+    pr = -0.351 * bpm + 176.7
+    return (pr + 35) / RR
