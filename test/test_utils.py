@@ -4,6 +4,8 @@ import numpy as np
 from neurokit2.ecg import ecg_simulate
 
 from rlign.utils import Template, find_rpeaks
+from rlign.utils import malik, qrs_off_to_t_off_karjalainen_to_percent, p_on_to_qrs_on_carrutheres
+from rlign.utils import _detrend, _resample_signal, _check_3d_array
 
 
 class UtilsTest(unittest.TestCase):
@@ -42,3 +44,42 @@ class UtilsTest(unittest.TestCase):
         self.assertEqual(np.min(template60.rpeaks), int(offset*sampling_rate))
         self.assertEqual(np.min(np.diff(template60.rpeaks)), sampling_rate)
         self.assertEqual(np.max(np.diff(template60.rpeaks)), sampling_rate)
+
+    def test_malik_ranges(self):
+        # At 60 BPM (RR=1000ms), QT should be roughly 360-420ms
+        qt = malik(60, type="avg")
+        self.assertGreater(qt, 300)
+        self.assertLess(qt, 500)
+        
+        # Test sex specific
+        self.assertNotEqual(malik(70, type="male"), malik(70, type="female"))
+
+    def test_fractions(self):
+        # Fractions of RR interval should be between 0 and 1
+        val_t = qrs_off_to_t_off_karjalainen_to_percent(60)
+        val_p = p_on_to_qrs_on_carrutheres(60)
+        self.assertTrue(0 < val_t < 1)
+        self.assertTrue(0 < val_p < 1)
+
+    def test_detrend(self):
+        # Create a signal with a strong linear trend: y = 2x + 5
+        x = np.arange(100)
+        y = 2.0 * x + 5.0 + np.random.normal(0, 0.1, 100)
+        detrended = _detrend(y.copy())
+        # The slope of the detrended signal should be near 0
+        slope = np.polyfit(x, detrended, 1)[0]
+        self.assertAlmostEqual(slope, 0, places=1)
+
+    def test_resample_with_nans(self):
+        # Test that NaNs are interpolated before resampling
+        sig = np.array([1.0, 2.0, np.nan, 4.0, 5.0])
+        # This shouldn't crash and should return finite values
+        resampled = _resample_signal(sig, 100, 200)
+        self.assertFalse(np.isnan(resampled).any())
+
+    def test_check_3d_array(self):
+        with self.assertRaises(ValueError):
+            _check_3d_array(np.random.randn(10, 10)) # 2D instead of 3D
+        
+        valid = np.random.randn(1, 1, 100)
+        self.assertTrue(np.array_equal(_check_3d_array(valid), valid))

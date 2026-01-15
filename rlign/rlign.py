@@ -112,15 +112,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         available_scale_methods = ['identity', 'linear', 'hrc']
         available_agg_beat_methods = ['median', 'mean', 'list', 'none']
 
-        if scale_method in available_scale_methods:
-            if scale_method == "identity":
-                if not self.agg_beat:
-                    raise ValueError(f'Scaling method "identity" only works with agg_beat==True')
-            self.scale_method = scale_method
-        else:
-            raise ValueError(f'No such scaling method, '
-                             f'please use one of the following: {available_scale_methods}')
-
         if agg_beat in available_agg_beat_methods or callable(agg_beat):
             self.agg_beat = agg_beat
 
@@ -136,6 +127,16 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         else:
             raise ValueError(f'No such aggregated beat method, '
                              f'please use one of the following: {available_agg_beat_methods}')
+
+        if scale_method in available_scale_methods:
+            if scale_method == "identity":
+                if not self.agg_beat or self.agg_beat=='none':
+                    raise ValueError(f'Scaling method "identity" only works with agg_beat==True')
+            self.scale_method = scale_method
+        else:
+            raise ValueError(f'No such scaling method, '
+                             f'please use one of the following: {available_scale_methods}')
+
 
         if self.silent:
             warnings.filterwarnings("ignore")

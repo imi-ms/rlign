@@ -195,7 +195,7 @@ def _detrend(source_ecg):
 def malik(bpm, type="avg"):
     """
     Estimate the QT interval duration based on heart rate using
-    the linear QT–RR relationship described by Malik et al.
+    the linear QT-RR relationship described by Malik et al.
 
     The QT interval is modeled as a linear function of the RR interval
     with sex-specific parameters. For `type="avg"`, the mean of the
@@ -205,7 +205,7 @@ def malik(bpm, type="avg"):
         Malik M, Färbom P, Batchvarov V, Hnatkova K, Camm AJ.
         Relation between QT and RR intervals is highly individual among
         healthy subjects: implications for heart rate correction of the QT interval.
-        Heart. 2002;87:220–228.
+        Heart. 2002;87:220-228.
     """
     RR = 60 / bpm
     if type == "avg":
@@ -225,7 +225,7 @@ def qrs_off_to_t_off_karjalainen_to_percent(bpm):
     Estimate the temporal distance from QRS offset to T-wave offset
     as a fraction of the RR interval.
 
-    The QT interval (in ms) is estimated using the Malik QT–RR model
+    The QT interval (in ms) is estimated using the Malik QT-RR model
     with average population parameters. A fixed duration of 35 ms
     corresponding to the QR portion of the QRS complex is subtracted
     to approximate the interval from R-peak to T-wave offset.
@@ -244,7 +244,7 @@ def qrs_off_to_t_off_karjalainen_to_percent(bpm):
 def p_on_to_qrs_on_carrutheres(bpm):
     """
     Estimate the temporal distance from P-wave onset to QRS onset
-    as a fraction of the RR interval, based on a heart-rate–dependent
+    as a fraction of the RR interval, based on a heart-rate-dependent
     PR interval model.
 
     The PR interval (in ms) is estimated according to:
@@ -253,7 +253,7 @@ def p_on_to_qrs_on_carrutheres(bpm):
         Carruthers SG, McCall B, Cordell BA, Wu R.
         Relationships between heart rate and PR interval during
         physiological and pharmacological interventions.
-        Br J Clin Pharmacol. 1987;23(3):259–265.
+        Br J Clin Pharmacol. 1987;23(3):259-265.
 
     A fixed offset of 35 ms is added to approximate the interval
     from P-wave onset to QRS onset.
