@@ -8,9 +8,11 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import warnings
+from scipy.ndimage import uniform_filter1d
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from rlign.utils import Template, find_rpeaks, _resample_multichannel, _check_3d_array, _detrend
+from rlign.utils import (Template, find_rpeaks, _resample_multichannel, _check_3d_array,
+                         _detrend, qrs_off_to_t_off_karjalainen_to_percent, p_on_to_qrs_on_carrutheres)
 
 
 class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
@@ -110,15 +112,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         available_scale_methods = ['identity', 'linear', 'hrc']
         available_agg_beat_methods = ['median', 'mean', 'list', 'none']
 
-        if scale_method in available_scale_methods:
-            if scale_method == "identity":
-                if not self.agg_beat:
-                    raise ValueError(f'Scaling method "identity" only works with agg_beat==True')
-            self.scale_method = scale_method
-        else:
-            raise ValueError(f'No such scaling method, '
-                             f'please use one of the following: {available_scale_methods}')
-
         if agg_beat in available_agg_beat_methods or callable(agg_beat):
             self.agg_beat = agg_beat
 
@@ -134,6 +127,16 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         else:
             raise ValueError(f'No such aggregated beat method, '
                              f'please use one of the following: {available_agg_beat_methods}')
+
+        if scale_method in available_scale_methods:
+            if scale_method == "identity":
+                if not self.agg_beat or self.agg_beat=='none':
+                    raise ValueError(f'Scaling method "identity" only works with agg_beat==True')
+            self.scale_method = scale_method
+        else:
+            raise ValueError(f'No such scaling method, '
+                             f'please use one of the following: {available_scale_methods}')
+
 
         if self.silent:
             warnings.filterwarnings("ignore")
@@ -243,17 +246,20 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
         template_starts = self.template.rpeaks
 
         template_rr_dist = template_starts[2] - template_starts[1]
-        dist_upper_template = int((self.template.bpm / 280+0.14) * template_rr_dist)
-        dist_lower_template = int((-self.template.bpm / 330 + 0.96) * template_rr_dist)
+        dist_upper_template = int(qrs_off_to_t_off_karjalainen_to_percent(self.template.bpm) * template_rr_dist)
+        dist_lower_template = int((1-p_on_to_qrs_on_carrutheres(self.template.bpm)) * template_rr_dist)
 
         max_len = self.seconds_len * self.sampling_rate
+        idx_35ms = int(self.sampling_rate * 35 / 1000)
+        idx_55ms = int(self.sampling_rate * 55 / 1000)
+        qrs_width = idx_35ms + idx_55ms
 
         beats = []
         for idx, rpeak in enumerate(source_rpeaks[:-1]):
 
             soruce_rr_dist = source_rpeaks[idx+1] - rpeak
-            dist_upper_or = int(np.clip((hr / 280 + 0.14), 0, 0.5) * soruce_rr_dist)
-            dist_lower_or = int(np.clip((-hr / 330 + 0.96), 0.6, 1) * soruce_rr_dist)
+            dist_upper_or = int(np.clip(qrs_off_to_t_off_karjalainen_to_percent(hr), 0, 0.5) * soruce_rr_dist)
+            dist_lower_or = int(np.clip(1-p_on_to_qrs_on_carrutheres(hr), 0.6, 1) * soruce_rr_dist)
 
             source_st = rpeak + dist_upper_or
             source_sp = np.min([rpeak + dist_lower_or, max_len])
@@ -272,26 +278,56 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                     target_fs+2*overlap
             ).transpose(1, 0)[:, overlap:-overlap]
 
-            # resampling between R-peak - T-offset
-            normalized_ecg[:, template_starts[idx]:target_st] = _resample_multichannel(
-                source_ecg[:, rpeak-overlap: source_st+overlap].transpose(1, 0),
-                source_st - rpeak+2*overlap,
-                target_st - template_starts[idx]+2*overlap
+            # resampling between QRS-complex - T-offset
+            qrs_end = rpeak + idx_55ms
+            normalized_ecg[:, template_starts[idx] + idx_55ms:target_st] = _resample_multichannel(
+                source_ecg[:, qrs_end-overlap: source_st+overlap].transpose(1, 0),
+                source_st - qrs_end+2*overlap,
+                target_st - (template_starts[idx] + idx_55ms) + 2*overlap
             ).transpose(1, 0)[:, overlap:-overlap]
 
-            # resampling between P-Onset - R-peak
+            # resampling between P-Onset - QRS-complex
             if source_rpeaks[idx+1] - source_sp > 10 and template_starts[idx + 1] - target_sp > 10 \
                     and source_rpeaks[idx+1]+overlap <= max_len:
-                normalized_ecg[:, target_sp:template_starts[idx+1]] = _resample_multichannel(
-                    source_ecg[:, source_sp-overlap:source_rpeaks[idx+1]+overlap].transpose(1, 0),
-                    source_rpeaks[idx+1] - source_sp+2*overlap,
-                    template_starts[idx + 1] - target_sp+2*overlap,
+                normalized_ecg[:, target_sp:template_starts[idx+1]-idx_35ms] = _resample_multichannel(
+                    source_ecg[:, source_sp-overlap:source_rpeaks[idx+1]-idx_35ms+overlap].transpose(1, 0),
+                    source_rpeaks[idx+1] - idx_35ms - source_sp+2*overlap,
+                    template_starts[idx + 1] - idx_35ms - target_sp+2*overlap,
                 ).transpose(1, 0)[:, overlap:-overlap]
 
+            # transfer QRS-complex
+            if template_starts[idx] - idx_35ms < 0:
+                idx_35ms = template_starts[idx]
+            normalized_ecg[:, template_starts[idx] - idx_35ms:
+                              template_starts[idx] + idx_55ms] = source_ecg[:, source_rpeaks[idx] - idx_35ms: source_rpeaks[idx] + idx_55ms]
+            idx_35ms = int(self.sampling_rate * 35 / 1000)
+
+            # smoothing the connection point
             if target_st:
                 normalized_ecg[:, target_st] = np.mean(normalized_ecg[:, [target_st-1, target_st+1]], axis=1)
             if target_sp:
                 normalized_ecg[:, target_sp] = np.mean(normalized_ecg[:, [target_sp-1, target_sp+1]], axis=1)
+
+                radius = 1
+                write_radius = 1
+
+                left = max(0, target_sp - radius)
+                right = min(normalized_ecg.shape[1], target_sp + radius + 1)
+                local = normalized_ecg[:, left:right]
+
+                # local filtering
+                local_filt = uniform_filter1d(
+                    local,
+                    size=2 * radius + 1,
+                    axis=1,
+                    mode="nearest"
+                )
+
+                write_left = target_sp - write_radius - left
+                write_right = target_sp + write_radius + 1 - left
+
+                normalized_ecg[:, target_sp - write_radius: target_sp + write_radius + 1] = \
+                    local_filt[:, write_left:write_right]
 
             if self.agg_beat != "none":
                 if (template_starts[idx] - int(self.template.intervals[0] / 3) < 0 or

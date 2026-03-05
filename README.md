@@ -84,7 +84,7 @@ ecg_aligned_80bpm = normalizer.transform(ecg)
     Also works with a lambda function, such as 'np.std'. Default is 'none'.
 
 * `detrend`: Detrend each beat individually using the robust median of slopes.
-    This is only computed if using `agg_beat`. Default is True.
+    This is only computed if using `agg_beat`. Default is False.
 
 * `silent`: Disable all warnings. Default is True.
 
