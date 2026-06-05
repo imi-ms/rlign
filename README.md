@@ -92,28 +92,19 @@ ecg_aligned_80bpm = normalizer.transform(ecg)
 Please use the following citation:
 
 ```
-@misc{plagwitz2024rlignalgorithmenhancedelectrocardiogram,
-      title={The Rlign Algorithm for Enhanced Electrocardiogram Analysis through R-Peak Alignment for Explainable Classification and Clustering}, 
-      author={Lucas Plagwitz and Lucas Bickmann and Michael Fujarski and Alexander Brenner and Warnes Gobalakrishnan and Lars Eckardt and Antonius Büscher and Julian Varghese},
-      year={2024},
-      eprint={2407.15555},
-      archivePrefix={arXiv},
-      primaryClass={eess.SP},
-      url={https://arxiv.org/abs/2407.15555}, 
-}
-```
-
-Additionally, please cite this publication:
-```
-@article{Bickmann2025challenging,
-  title    = "Challenging Black-Box Models: Interpretable Explanations for
-              {ECG} Classification",
-  author   = "Lucas Bickmann and Lucas Plagwitz and Antonius Büscher and Julian Varghese",
-  journal  = "Stud. Health Technol. Inform.",
-  volume   =  327,
-  pages    = "587--588",
-  month    =  may,
-  year     =  2025,
+@article{10.1093/ehjdh/ztag067,
+    author = {Plagwitz, Lucas and Bickmann, Lucas and Fujarski, Michael and Brenner, Alexander and Gobalakrishnan, Warnes and Eckardt, Lars and Büscher, Antonius and Varghese, Julian},
+    title = {The Rlign algorithm for enhanced electrocardiogram analysis through heart rate–corrected ECG alignment for explainable classification and clustering},
+    journal = {European Heart Journal - Digital Health},
+    volume = {7},
+    number = {5},
+    pages = {ztag067},
+    year = {2026},
+    month = {06},
+    issn = {2634-3916},
+    doi = {10.1093/ehjdh/ztag067},
+    url = {https://doi.org/10.1093/ehjdh/ztag067},
+    eprint = {https://academic.oup.com/ehjdh/article-pdf/7/5/ztag067/68184703/ztag067.pdf},
 }
 ```
 
