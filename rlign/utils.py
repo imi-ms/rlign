@@ -239,7 +239,7 @@ def _check_3d_array(X):
 
 def _detrend(source_ecg):
     x = np.arange(len(source_ecg))
-    slope, intercept, _, _ = theilslopes(source_ecg, x, method="hierarchical")
+    slope, intercept, _, _ = theilslopes(source_ecg, x, method="joint")
     source_ecg -= intercept + slope * x
     return source_ecg
 
@@ -263,7 +263,7 @@ def malik(bpm, type="avg"):
     if type == "avg":
         # return (malik(bpm, type="male") + malik(bpm, type="female")) / 2
         # = ((0.24 + 0.15 * RR) + (0.22 + 0.19 * RR)) / 2 = 0.23 + 0.17*RR
-        return 0.23 + 0.17*RR
+        return (0.23 + 0.17*RR) * 1000
     # only linear
     if type == "male":
         beta, alpha = 0.24, 0.15
