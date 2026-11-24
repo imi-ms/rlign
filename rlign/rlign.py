@@ -137,7 +137,6 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             raise ValueError(f'No such scaling method, '
                              f'please use one of the following: {available_scale_methods}')
 
-
         if self.silent:
             warnings.filterwarnings("ignore")
 
@@ -227,14 +226,12 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             case "hrc":
                 normalized_ecg = self._scale_hrc(source_ecg, source_rpeaks, hr)
             case "identity":
-                normalized_ecgs = []
-                for rpeak in source_rpeaks[:]:
-                    if rpeak < 200 or rpeak > len(source_ecg[0])-400:
-                        continue
-                    else:
-                        normalized_ecgs.append(source_ecg[:, rpeak-200:rpeak+400].reshape((1, len(source_ecg), 600)))
-                normalized_ecg = np.median(np.concatenate(normalized_ecgs, axis=0), axis=0)
-                return normalized_ecg
+                sig_len = source_ecg.shape[1]
+                valid_rpeaks = [r for r in source_rpeaks if 200 <= r <= sig_len - 400]
+                if not valid_rpeaks:
+                    return source_ecg[:, :600], 1
+                normalized_ecg = np.median(np.stack([source_ecg[:, r-200:r+400] for r in valid_rpeaks], axis=0), axis=0)
+                return normalized_ecg, 0
             case _:
                 raise Exception("No such resampling method implemented!")
 
@@ -256,6 +253,9 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
         beats = []
         for idx, rpeak in enumerate(source_rpeaks[:-1]):
+            # Safety check: avoid exceeding available template intervals
+            if idx + 1 >= len(template_starts):
+                break
 
             soruce_rr_dist = source_rpeaks[idx+1] - rpeak
             dist_upper_or = int(np.clip(qrs_off_to_t_off_karjalainen_to_percent(hr), 0, 0.5) * soruce_rr_dist)
@@ -271,29 +271,29 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
             overlap = 2  # remove artifacts
 
-            # resampling between T-offset - P-onset
+            # resampling between T-offset - P-onset (vectorized along axis=-1)
             normalized_ecg[:, target_st:target_sp] = _resample_multichannel(
-                    source_ecg[:, source_st-overlap:source_sp+overlap].transpose(1, 0),
-                    source_fs+2*overlap,
-                    target_fs+2*overlap
-            ).transpose(1, 0)[:, overlap:-overlap]
+                source_ecg[:, source_st-overlap:source_sp+overlap],
+                target_fs + 2 * overlap,
+                axis=-1
+            )[:, overlap:-overlap]
 
             # resampling between QRS-complex - T-offset
             qrs_end = rpeak + idx_55ms
             normalized_ecg[:, template_starts[idx] + idx_55ms:target_st] = _resample_multichannel(
-                source_ecg[:, qrs_end-overlap: source_st+overlap].transpose(1, 0),
-                source_st - qrs_end+2*overlap,
-                target_st - (template_starts[idx] + idx_55ms) + 2*overlap
-            ).transpose(1, 0)[:, overlap:-overlap]
+                source_ecg[:, qrs_end-overlap: source_st+overlap],
+                target_st - (template_starts[idx] + idx_55ms) + 2 * overlap,
+                axis=-1
+            )[:, overlap:-overlap]
 
             # resampling between P-Onset - QRS-complex
             if source_rpeaks[idx+1] - source_sp > 10 and template_starts[idx + 1] - target_sp > 10 \
                     and source_rpeaks[idx+1]+overlap <= max_len:
                 normalized_ecg[:, target_sp:template_starts[idx+1]-idx_35ms] = _resample_multichannel(
-                    source_ecg[:, source_sp-overlap:source_rpeaks[idx+1]-idx_35ms+overlap].transpose(1, 0),
-                    source_rpeaks[idx+1] - idx_35ms - source_sp+2*overlap,
-                    template_starts[idx + 1] - idx_35ms - target_sp+2*overlap,
-                ).transpose(1, 0)[:, overlap:-overlap]
+                    source_ecg[:, source_sp-overlap:source_rpeaks[idx+1]-idx_35ms+overlap],
+                    template_starts[idx + 1] - idx_35ms - target_sp + 2 * overlap,
+                    axis=-1
+                )[:, overlap:-overlap]
 
             # transfer QRS-complex
             if template_starts[idx] - idx_35ms < 0:
@@ -303,9 +303,9 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             idx_35ms = int(self.sampling_rate * 35 / 1000)
 
             # smoothing the connection point
-            if target_st:
+            if target_st and target_st < normalized_ecg.shape[1] - 1:
                 normalized_ecg[:, target_st] = np.mean(normalized_ecg[:, [target_st-1, target_st+1]], axis=1)
-            if target_sp:
+            if target_sp and target_sp < normalized_ecg.shape[1] - 1:
                 normalized_ecg[:, target_sp] = np.mean(normalized_ecg[:, [target_sp-1, target_sp+1]], axis=1)
 
                 radius = 1
@@ -337,7 +337,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                 else:
                     beats.append(normalized_ecg[:, template_starts[idx] - int(self.template.intervals[0] / 3):
                                                         template_starts[idx] + self.template.intervals[0] -
-                                                        int(self.template.intervals[0] / 3)].reshape((1, n_channel, -1)))
+                                                        int(self.template.intervals[0] / 3)])
 
         if self.agg_beat != "none":
             return self._agg_beats(source_ecg, normalized_ecg, beats)
@@ -353,6 +353,9 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
         # iterate over all peaks
         for idx, (source_st, source_fs) in enumerate(zip(source_rpeaks, source_rpeaks_intervals)):
+            if idx >= len(template_starts):
+                break
+
             # define stop of source
             source_sp = source_st + source_fs
 
@@ -361,12 +364,12 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             target_fs = template_intervals[idx]
             target_sp = target_st + target_fs
 
-            # call resampling
+            # call resampling (vectorized along axis=-1)
             normalized_ecg[:, target_st:target_sp] = _resample_multichannel(
-                    source_ecg[:, source_st:source_sp].transpose(1, 0),
-                    source_fs,
-                    target_fs
-            ).transpose(1, 0)
+                source_ecg[:, source_st:source_sp],
+                target_fs,
+                axis=-1
+            )
 
             if self.agg_beat != "none":
                 if (template_starts[idx] - int(self.template.intervals[0] / 3) < 0 or
@@ -376,7 +379,7 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
                 else:
                     beats.append(normalized_ecg[:, template_starts[idx] - int(self.template.intervals[0] / 3):
                                                         template_starts[idx] + self.template.intervals[0] - int(
-                                                            self.template.intervals[0] / 3)].reshape((1, n_channel, -1)))
+                                                            self.template.intervals[0] / 3)])
 
         if self.agg_beat != "none":
             return self._agg_beats(source_ecg, normalized_ecg, beats)
@@ -385,21 +388,24 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
     def _agg_beats(self, source_ecg, normalized_ecg, beats):
         if len(beats):
-            beats = np.nan_to_num(beats, nan=np.nanmean(beats, axis=(-1), keepdims=True))
+            # beats: shape (n_beats, channels, time)
+            arr_beats = np.stack(beats, axis=0)
+            nan_means = np.nanmean(arr_beats, axis=-1, keepdims=True)
+            arr_beats = np.where(np.isnan(arr_beats), nan_means, arr_beats)
 
             if self.detrend:
-                beats = np.apply_along_axis(_detrend, axis=-1, arr=beats)
+                arr_beats = np.apply_along_axis(_detrend, axis=-1, arr=arr_beats)
 
             match self.agg_beat:
                 case "median":
-                    normalized_ecg = np.nanmedian(np.concatenate(beats, axis=0), axis=0)
+                    normalized_ecg = np.nanmedian(arr_beats, axis=0)
                 case "mean":
-                    normalized_ecg = np.nanmean(np.concatenate(beats, axis=0), axis=0)
+                    normalized_ecg = np.nanmean(arr_beats, axis=0)
                 case "list":
-                    beats = np.transpose(np.asarray(beats), (1, 2, 3, 0))
-                    normalized_ecg = np.concatenate(beats, axis=-2)
+                    # (channels, time, n_beats)
+                    normalized_ecg = np.transpose(arr_beats, (1, 2, 0))
                 case _:
-                    normalized_ecg = self.agg_beat(np.concatenate(beats, axis=0), axis=0)
+                    normalized_ecg = self.agg_beat(arr_beats, axis=0)
 
             return normalized_ecg
         else:
@@ -434,9 +440,9 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             A normalized ECG with equally spaced QRST-complexes based on the defined template.
         """
 
-        ecg_lead = np.array(ecg[self.select_lead])
+        ecg_lead = np.ascontiguousarray(ecg[self.select_lead])
         rpeaks = find_rpeaks(ecg_lead, self.sampling_rate)
-        if rpeaks is None or all(element is None for element in rpeaks):
+        if rpeaks is None or len(rpeaks) == 0 or all(element is None for element in rpeaks):
             if not self.remove_fails:
                 if self.agg_beat == "none":
                     return ecg, 1
@@ -462,11 +468,11 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
 
             return ecg, 1
 
-        # limit number of R-peaks to the targets
-        rpeaks = rpeaks[: len(self.template.rpeaks+1)]
+        # limit number of R-peaks to the targets (capped at template length)
+        rpeaks = np.asarray(rpeaks[: len(self.template.rpeaks)])
 
         # get the interval lengths of found rpeaks
-        rpeak_intervals = np.diff([*rpeaks], axis=0)
+        rpeak_intervals = np.diff(rpeaks)
 
         # call the normalization function
         return self._normalize_interval(
@@ -489,12 +495,15 @@ class Rlign(BaseEstimator, TransformerMixin, auto_wrap_output_keys=None):
             The beat normalized ecgs.
         """
         X = _check_3d_array(X)
+        n_samples = len(X)
+
         # Apply multiprocessing
-        if self.num_workers > 1:
+        if self.num_workers > 1 and n_samples > 1:
+            chunksize = max(1, n_samples // (self.num_workers * 4))
             with mp.Pool(self.num_workers) as pool:
-                results = pool.map(self._template_transform, [d for d in X])
+                results = pool.map(self._template_transform, X, chunksize=chunksize)
         else:
-            results = [self._template_transform(X[i]) for i in range(len(X))]
+            results = [self._template_transform(X[i]) for i in range(n_samples)]
 
         self.fails = [res[1] for res in results]
         d = [res[0] for res in results if res[0] is not None]

@@ -5,7 +5,6 @@
 
 import logging
 import numpy as np
-import pandas as pd
 
 from typing import Tuple
 from scipy.signal import resample
@@ -118,29 +117,73 @@ def find_rpeaks(
     return rpeaks
 
 
-def _resample_multichannel(xs, fs, fs_target):
+def _resample_multichannel(
+    xs: np.ndarray,
+    num_target: int,
+    axis: int = -1,
+    window: str = "hamming"
+) -> np.ndarray:
     """
-    Resample multiple channels with their annotations.
+    Vectorized multichannel resampling using SciPy FFT.
 
     Parameters:
         xs: ndarray
             The signal array.
-        fs : int, float
-            The original frequency.
-        fs_target : int, float
-            The target frequency.
+        num_target : int
+            The target number of samples to which the signal is resampled along
+            the given axis.
+
+        axis : int
+            The axis along which the signal is resampled, i.e. the time axis
+            (defaults to -1, the last dimension).
+
+        window: str
+            The Fourier-domain window applied by the FFT resampling to reduce
+            spectral leakage (defaults to "hamming"). See
+            scipy.signal.resample for accepted values.
 
     Returns:
-        Array of the resampled signal values.
+        Array of the resampled signal values, with the specified axis resized
+        to num_target and all other dimensions unchanged.
 
     Note:
         The method have been modified from wfdbs resample_multichan and resample_sig.
+
     """
-    lx = []
-    for chan in range(xs.shape[1]):
-        resampled_x = _resample_signal(xs[:, chan], fs, fs_target)
-        lx.append(resampled_x)
-    return np.column_stack(lx)
+    orig_len = xs.shape[axis]
+    if orig_len == num_target:
+        return xs
+    if orig_len <= 0 or num_target <= 0:
+        shape = list(xs.shape)
+        shape[axis] = max(0, num_target)
+        return np.empty(shape, dtype=xs.dtype)
+
+    # Handle internal NaNs using fast 1D NumPy interpolation (bypassing pandas)
+    if np.isnan(xs).any():
+        xs = _nan_interpolate_nd(xs, axis=axis)
+
+    return resample(xs, num=num_target, axis=axis, window=window)
+
+
+def _nan_interpolate_nd(arr: np.ndarray, axis: int = -1) -> np.ndarray:
+    """Fast pure-NumPy 1D linear interpolation along an axis to fill NaNs."""
+    arr = arr.copy()
+    # Move target axis to the last dimension
+    arr_swapped = np.moveaxis(arr, axis, -1)
+    orig_shape = arr_swapped.shape
+    arr_2d = arr_swapped.reshape(-1, orig_shape[-1])
+    n_points = orig_shape[-1]
+    x_grid = np.arange(n_points)
+
+    for i in range(arr_2d.shape[0]):
+        row = arr_2d[i]
+        nans = np.isnan(row)
+        if nans.any() and not nans.all():
+            row[nans] = np.interp(x_grid[nans], x_grid[~nans], row[~nans])
+        elif nans.all():
+            row[:] = 0.0
+
+    return np.moveaxis(arr_2d.reshape(orig_shape), -1, axis)
 
 
 def _resample_signal(x, fs, fs_target):
@@ -165,19 +208,28 @@ def _resample_signal(x, fs, fs_target):
     if fs == fs_target:
         return x
 
-    new_length = int(x.shape[0] * fs_target / fs)
-    # Resample the array if NaN values are present
-    if np.isnan(x).any():
-        x = pd.Series(x.reshape((-1,))).interpolate().values
-    resampled_x = resample(x, num=new_length, window="hamming")
+    new_length = int(x.shape[0] * (fs_target / fs))
+    if new_length <= 0:
+        return np.empty(0, dtype=x.dtype)
 
-    return resampled_x
+    nans = np.isnan(x)
+    if nans.any():
+        if not nans.all():
+            x = x.copy().reshape(-1)
+            idx = np.arange(len(x))
+            x[nans] = np.interp(idx[nans], idx[~nans], x[~nans])
+        else:
+            return np.zeros(new_length, dtype=x.dtype)
+
+    return resample(x, num=new_length, window="hamming")
 
 
 def _check_3d_array(X):
     """
     Check that the input is a three-dimensional array.
     """
+    if isinstance(X, np.ndarray) and X.ndim == 3 and np.issubdtype(X.dtype, np.floating):
+        return X
     X = check_array(X, ensure_2d=False, allow_nd=True)
     if X.ndim != 3:
         raise ValueError(f"X must be 3-dimensional (got {X.ndim}).")
@@ -187,8 +239,7 @@ def _check_3d_array(X):
 def _detrend(source_ecg):
     x = np.arange(len(source_ecg))
     slope, intercept, _, _ = theilslopes(source_ecg, x, method="joint")
-    trend = intercept + slope * x
-    source_ecg -= trend
+    source_ecg -= intercept + slope * x
     return source_ecg
 
 
@@ -209,7 +260,9 @@ def malik(bpm, type="avg"):
     """
     RR = 60 / bpm
     if type == "avg":
-        return (malik(bpm, type="male") + malik(bpm, type="female")) / 2
+        # return (malik(bpm, type="male") + malik(bpm, type="female")) / 2
+        # = ((0.24 + 0.15 * RR) + (0.22 + 0.19 * RR)) / 2 = 0.23 + 0.17*RR
+        return (0.23 + 0.17*RR) * 1000
     # only linear
     if type == "male":
         beta, alpha = 0.24, 0.15
@@ -235,10 +288,12 @@ def qrs_off_to_t_off_karjalainen_to_percent(bpm):
     - Sinus rhythm and physiological heart rates.
     - Population-average correction; individual variability is expected.
     """
-    RR = 60 / bpm * 1000
-    qt = malik(bpm, type="avg")
-    qt -= 35
-    return qt / RR
+    #RR = 60 / bpm * 1000
+    #qt = malik(bpm, type="avg")
+    #qt -= 35
+    #return qt / RR
+
+    return 0.00325 * bpm + 0.17
 
 
 def p_on_to_qrs_on_carrutheres(bpm):
@@ -259,6 +314,8 @@ def p_on_to_qrs_on_carrutheres(bpm):
     from P-wave onset to QRS onset.
 
     """
-    RR = (60 / bpm * 1000)
-    pr = -0.351 * bpm + 176.7
-    return (pr + 35) / RR
+    #RR = (60 / bpm * 1000)
+    #pr = -0.351 * bpm + 176.7
+    #return (pr + 35) / RR
+
+    return (-0.351 * bpm + 211.7) * (bpm / 60000.0)
