@@ -4,8 +4,13 @@
 
 # Rlign: R peak alignment and ECG transformation framework
 
+[![CI](https://github.com/imi-ms/rlign/actions/workflows/pipeline.yml/badge.svg)](https://github.com/imi-ms/rlign/actions/workflows/pipeline.yml)
+[![PyPI](https://img.shields.io/pypi/v/rlign.svg)](https://pypi.org/project/rlign/)
+[![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13%20%7C%203.14%20%7C%203.15-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
+
 This scikit-learn compatible framework `rlign` is designed to synchronize the temporal variations across ECG recordings. This alignment enables the direct application of simpler machine learning models, like support vector machines and logistic regression, on R-peak aligned ECG signals, bypassing the need for complex and potentially biased feature extraction and allowing for interpretable, efficient analysis with enhanced small sample size convergence. Moreover, the alignment facilitates clustering of ECG time series, overcoming the challenges posed by unaligned data, where clusters are obscured by temporal misalignments of cardiac cycles. `Rlign` can also be used for improved interpretability of CNNs by aggregating importance maps from Integrated Gradients across all instances of a data set, instead of only reviewing individual ECGs.
-For more in-depth insights, please refer to our paper available on [arXiv](https://arxiv.org/abs/2407.15555).
+For more in-depth insights, please refer to our paper available on [European Heart Journal - Digital Health](https://doi.org/10.1093/ehjdh/ztag067).
 
 ## Installation
 ### From PyPI
